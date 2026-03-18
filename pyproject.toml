@@ -1,0 +1,10 @@
+[project]
+name = "hrenpack-sync"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "typer>=0.24.1",
+]
+
+[project.scripts]
+hrenpack = "hrenpack_sync:app"
