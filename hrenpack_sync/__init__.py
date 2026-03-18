@@ -6,28 +6,29 @@ from .json_config import Config
 
 app = Typer(no_args_is_help=True)
 
-VALID_MANAGERS = ['uv', 'pipenv', 'npm', 'yarn', '*']  # Определяем допустимые значения
+VALID_MANAGERS = ['uv', 'pipenv', 'npm', 'yarn', '*']
 
 
-@app.command
+@app.command()
 def clone(directory: str = Argument('hrenpack_source', help="Directory to clone")):
+    """Clone the hrenpack repository"""
     config = Config()
     config['directory'] = directory
     sys.exit(os.system(f'git clone https://github.com/MagIlyasDOMA/hrenpack.git {directory}'))
 
 
-@app.command
+@app.command()
 def managers(
         action: Optional[str] = Argument(None, help="Action to perform (add/remove/set)"),
-        args: Optional[List[str]] = Argument(None, help="Managers list. Use 'remove *' for removing all managers")
+        managers: Optional[List[str]] = Argument(None, help="Managers list. Use 'remove *' for removing all managers")
 ):
     """Manage package managers configuration"""
     config = Config()
-    data = set(config['managers'])
+    data = set(config.get('managers', []))
 
     # Показываем текущие менеджеры если action не указан
     if action is None:
-        print(', '.join(data))
+        print(', '.join(data) if data else 'No managers configured')
         sys.exit(0)
 
     # Валидация action
@@ -35,35 +36,35 @@ def managers(
         print(f"Error: Invalid action '{action}'. Use add, remove, or set", file=sys.stderr)
         sys.exit(1)
 
-    # Валидация args
-    if args is None:
-        args = []
+    # Если managers не указаны, используем пустой список
+    if managers is None:
+        managers = []
 
     # Валидация значений менеджеров
-    for arg in args:
-        if arg not in VALID_MANAGERS:
-            print(f"Error: Invalid manager '{arg}'. Valid managers: {', '.join(VALID_MANAGERS)}", file=sys.stderr)
+    for mgr in managers:
+        if mgr not in VALID_MANAGERS:
+            print(f"Error: Invalid manager '{mgr}'. Valid managers: {', '.join(VALID_MANAGERS)}", file=sys.stderr)
             sys.exit(1)
 
     # Выполнение действия
     if action == 'add':
-        for arg in args:
-            data.add(arg)
+        for mgr in managers:
+            data.add(mgr)
     elif action == 'remove':
-        if '*' in args:
+        if '*' in managers:
             data = set()
         else:
-            for arg in args:
-                data.discard(arg)  # discard не вызывает ошибку если элемент отсутствует
+            for mgr in managers:
+                data.discard(mgr)
     elif action == 'set':
-        data = set(args)
+        data = set(managers)
 
     # Сохраняем изменения
-    config['managers'] = list(data)  # Преобразуем set в list для JSON
-    print(f"Managers updated: {', '.join(data)}")
+    config['managers'] = list(data)
+    print(f"Managers updated: {', '.join(data) if data else 'none'}")
 
 
-@app.command
+@app.command()
 def sync(
         hrenpack_only: bool = Option(False, '--hrenpack-only', '-H', help="Pull origin hrenpack only")
 ):
@@ -79,7 +80,7 @@ def sync(
         code = os.system('git pull origin')
         os.chdir('..')
 
-    for manager in config['managers']:
+    for manager in config.get('managers', []):
         if code != 0:
             break
         elif manager == 'uv':
@@ -90,7 +91,7 @@ def sync(
     sys.exit(code)
 
 
-@app.command
+@app.command()
 def commit(
         hrenpack_only: bool = Option(False, '--hrenpack-only', '-H', help="Commit hrenpack only")
 ):
@@ -98,7 +99,7 @@ def commit(
     sys.exit(commands.commit(hrenpack_only))
 
 
-@app.command
+@app.command()
 def push(
         hrenpack_only: bool = Option(False, '--hrenpack-only', '-H', help="Push origin hrenpack only"),
         commit: bool = Option(False, '--commit', '-c', help="Commit before pushing")
