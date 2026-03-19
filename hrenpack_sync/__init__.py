@@ -21,11 +21,12 @@ def clone(directory: str = Argument('hrenpack_source', help="Directory to clone"
     else: sys.exit(0)
 
 
-@app.command
+@app.command()
 def managers(
     action: Optional[str] = Argument(None, help="Action to perform (add/remove/set)"),
     args: Optional[List[Manager]] = Argument(None, help="Managers list. Use 'remove *' for removing all managers")
 ):
+    """Update package managers"""
     config = Config()
     data = set(config['managers'])
 
