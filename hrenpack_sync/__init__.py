@@ -3,6 +3,7 @@ from typing import List, Optional
 from typer import Typer, Argument, Option
 from . import commands
 from .json_config import Config
+from .enum import Manager
 
 app = Typer(no_args_is_help=True)
 
@@ -10,58 +11,50 @@ VALID_MANAGERS = ['uv', 'pipenv', 'npm', 'yarn', '*']
 
 
 @app.command()
-def clone(directory: str = Argument('hrenpack_source', help="Directory to clone")):
+def clone(directory: str = Argument('hrenpack_source', help="Directory to clone"),
+          dry_run: bool = Option(False, '--dry-run', '--not-clone', '-d', '-c')):
     """Clone the hrenpack repository"""
     config = Config()
     config['directory'] = directory
-    sys.exit(os.system(f'git clone https://github.com/MagIlyasDOMA/hrenpack.git {directory}'))
+    if not dry_run:
+        sys.exit(os.system(f'git clone https://github.com/MagIlyasDOMA/hrenpack.git {directory}'))
+    else: sys.exit(0)
 
 
-@app.command()
+@app.command
 def managers(
-        action: Optional[str] = Argument(None, help="Action to perform (add/remove/set)"),
-        managers: Optional[List[str]] = Argument(None, help="Managers list. Use 'remove *' for removing all managers")
+    action: Optional[str] = Argument(None, help="Action to perform (add/remove/set)"),
+    args: Optional[List[Manager]] = Argument(None, help="Managers list. Use 'remove *' for removing all managers")
 ):
-    """Manage package managers configuration"""
     config = Config()
-    data = set(config.get('managers', []))
+    data = set(config['managers'])
 
-    # Показываем текущие менеджеры если action не указан
     if action is None:
-        print(', '.join(data) if data else 'No managers configured')
+        print(', '.join(data))
         sys.exit(0)
 
-    # Валидация action
-    if action not in ['add', 'remove', 'set']:
-        print(f"Error: Invalid action '{action}'. Use add, remove, or set", file=sys.stderr)
-        sys.exit(1)
+    if args is None:
+        args = []
 
-    # Если managers не указаны, используем пустой список
-    if managers is None:
-        managers = []
+    # Конвертируем Enum в строки
+    str_args = [m.value for m in args]
 
-    # Валидация значений менеджеров
-    for mgr in managers:
-        if mgr not in VALID_MANAGERS:
-            print(f"Error: Invalid manager '{mgr}'. Valid managers: {', '.join(VALID_MANAGERS)}", file=sys.stderr)
-            sys.exit(1)
-
-    # Выполнение действия
     if action == 'add':
-        for mgr in managers:
-            data.add(mgr)
+        for arg in str_args:
+            data.add(arg)
     elif action == 'remove':
-        if '*' in managers:
+        if Manager.ALL.value in str_args:
             data = set()
         else:
-            for mgr in managers:
-                data.discard(mgr)
+            for arg in str_args:
+                data.discard(arg)
     elif action == 'set':
-        data = set(managers)
+        data = set(str_args)
+    else:
+        print(f"Error: Invalid action '{action}'")
+        sys.exit(1)
 
-    # Сохраняем изменения
     config['managers'] = list(data)
-    print(f"Managers updated: {', '.join(data) if data else 'none'}")
 
 
 @app.command()
